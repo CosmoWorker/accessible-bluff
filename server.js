@@ -1,8 +1,12 @@
+require("dotenv").config();
 var express = require("express");
-var app = express()
-var http = require("http").createServer(app)
-var io = require("socket.io")(http)
-var serverfn = require('./helpers/ServerFunctions')
+const session=require("express-session"); 
+const passport= require("passport");
+const GoogleStrategy= require("passport-google-oauth20").Strategy;
+var app = express(); 
+var http = require("http").createServer(app);
+var io = require("socket.io")(http);
+var serverfn = require('./helpers/ServerFunctions');
 var path = require('path');
 const hbs = require('hbs');
 // Set up the view engine to use HBS
@@ -14,12 +18,84 @@ var Deck = require('./helpers/deck');
 const { Socket } = require("socket.io");
 const { TIMEOUT } = require("dns");
 var router = express.Router();
-const CardDeck = new Deck.Deck()
+const CardDeck = new Deck.Deck();
 const { v4: uuidv4 } = require('uuid');
-const rooms = {};
-app.get('/', (req, res) => {
+const { profile } = require("console"); 
+app.use(session({ //session middleware required for OAuth
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: true
+}))
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: `http://localhost:${process.env.HTTP_PORT}/auth/google/callback`
+},
+  (accessToken, refereshToken, profile, done)=>{
+    return done(null, profile);
+  }
+));
+console.log("before serializing");
+passport.serializeUser((user, done)=>{
+  done(null, user);
+});
+console.log("before deserializing");
+passport.deserializeUser((user, done)=>{
+  done(null, user);
+});
+app.get('/auth/google', passport.authenticate('google', {scope: ["profile", "email"]}));
+console.log("after passport authenticate");
+app.get('/auth/google/callback', 
+  passport.authenticate("google", {failureRedirect: "/login"}), 
+  (req, res)=>{
+    res.redirect("/profile"); //redirect to profile setup if first login
+  }
+);
+
+app.get("/logout", (req, res)=>{
+  req.logout(()=>{
+    res.redirect("/login");
+  });
+});
+
+const isAuth=(req, res, next)=>{
+  if (req.isAuthenticated()){
+    next();
+    return;
+  }
+  res.redirect("/login");
+}
+
+app.use((req, res, next)=>{
+  if (!req.session){
+    req.session={};
+  }
+  //saving it to returnTo if it not set and it can't be /login and Oauth callback
+  if (!req.session.returnTo &&  req.originalUrl !== '/login' && !req.originalUrl.startsWith('/auth/google')){
+    req.session.returnTo=req.originalUrl; //saving last visited url
+  }
+  next();
+})
+
+app.get('/profile', isAuth, (req, res)=>{
+  res.render('profile');
+});
+app.get('/login', (req, res)=>{
+  if (req.isAuthenticated()){
+    const redirectTo=req.session.returnTo;
+    delete req.session.returnTo; //clearing stored URL
+    res.redirect(redirectTo);
+    return;
+  }
+  res.render('login');
+});
+app.get('/', isAuth, (req, res) => {
   res.render('game');
 });
+
+const rooms = {};
 var rcount;
 const roomCapacity = 2;//set roomcapacity
 const roomCounts = {}
@@ -61,7 +137,8 @@ io.on('connection', (socket) => {
   roomCounts[roomId]++; // Increment the room count
   console.log("New user joined connected with room ID: " + roomId + ", member count: " + roomCounts[roomId]);
   // If the room reaches its capacity, emit a message to restrict further entry
-  if (roomCounts[roomId] >= roomCapacity) {
+  if (roomCounts[roomId] == roomCapacity) { 
+  //Ideally roomCounts[roomId] can never be greater than roomCapacity so '==' used, '>=' can be used just in case of any addition to allow game flow 
     io.to(roomId).emit('STOC-SET-NUMBER-OF-PLAYERS', roomCapacity);
     assignTurns(roomId);
     setTimeout(() => {
@@ -176,8 +253,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('CTOS-PASS', (pos) => {
-    rooms[roomId].passedPlayers.push(pos)
-    console.log("PASSED PLAYER LENGTH , WON PLAYER LENGTH:", rooms[roomId].passedPlayers.length, rooms[roomId].wonUsers.length)
+    rooms[roomId].passedPlayers.push(pos);
+    console.log("PASSED PLAYER LENGTH , WON PLAYER LENGTH:", rooms[roomId].passedPlayers.length, rooms[roomId].wonUsers.length);
     io.to(roomId).emit('STOC-GAME-PLAYED', 0, rooms[roomId].bluff_text)
     if (rooms[roomId].passedPlayers.length === (rooms[roomId].clients.length - rooms[roomId].wonUsers.length)) {
       rooms[roomId].CardStack = [];
@@ -234,7 +311,7 @@ function changeTurn(roomId) {
   }
 }
 
-http.listen(3000, () => {
-  console.log("connected to server");
+http.listen(process.env.HTTP_PORT, () => {
+  console.log(`connected to server at http://localhost:${process.env.HTTP_PORT}`);
 }
 )

@@ -3,7 +3,7 @@ module.exports = {
   partitionCards: (cardset, roomCapacity) => {
     const totalCards = cardset.length;
     const cardsPerPlayer = Math.floor(totalCards / roomCapacity);
-    console.log(cardsPerPlayer)
+    console.log(cardsPerPlayer);
     const partitionedCards = [];
     for (let i = 0; i < roomCapacity; i++) {
       const start = i * cardsPerPlayer;

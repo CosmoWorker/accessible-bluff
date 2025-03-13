@@ -1,4 +1,4 @@
-const SUITS = ["♠", "♣", "♥", "♦"]
+const SUITS = ["♠", "♣", "♥", "♦"];
 const VALUES = [
   "A",
   "2",
@@ -13,35 +13,42 @@ const VALUES = [
   "J",
   "Q",
   "K"
-]
+];
+const Jokers=[{suit: "JOKER", value: "JOKER"}, {suit: "JOKER", value: "JOKER"}];
 class Deck {
   constructor(cards = freshDeck()) {
-    this.cards = cards
+    this.cards = cards;
   }
   get numberOfCards() {
-    return this.cards.length
+    return this.cards.length;
   }
   shuffle() {
     for (let i = this.numberOfCards - 1; i > 0; i--) {
-      const newIndex = Math.floor(Math.random() * (i + 1))
-      const oldValue = this.cards[newIndex]
-      this.cards[newIndex] = this.cards[i]
-      this.cards[i] = oldValue
+      const newIndex = Math.floor(Math.random() * (i + 1));
+      const oldValue = this.cards[newIndex];
+      this.cards[newIndex] = this.cards[i];
+      this.cards[i] = oldValue;
     }
   }
 }
 class Card {
   constructor(suit, value) {
-    this.suit = suit
-    this.value = value
+    this.suit = suit;
+    this.value = value;
   }
 }
 function freshDeck() {
-  return SUITS.flatMap(suit => {
+  let deck= SUITS.flatMap(suit => {
     return VALUES.map(value => {
-      return new Card(suit, value)
-    })
-  })
+      return new Card(suit, value);
+    });
+  });
+
+  //adding jokers to the deck too
+  deck.push(new Card("JOKER", "JOKER"));
+  deck.push(new Card("JOKER", "JOKER"));
+
+  return deck;
 }
 //module.exports=Deck;
 exports.Card = Card;
