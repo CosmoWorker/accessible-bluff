@@ -14,7 +14,7 @@ const VALUES = [
   "Q",
   "K"
 ];
-const Jokers=[{suit: "JOKER", value: "JOKER"}, {suit: "JOKER", value: "JOKER"}];
+const Jokers=[{suit: "🃏", value: "🃏"}, {suit: "🃏", value: "🃏"}];
 class Deck {
   constructor(cards = freshDeck()) {
     this.cards = cards;
@@ -45,8 +45,8 @@ function freshDeck() {
   });
 
   //adding jokers to the deck too
-  deck.push(new Card("JOKER", "JOKER"));
-  deck.push(new Card("JOKER", "JOKER"));
+  deck.push(new Card("🃏", "🃏"));
+  deck.push(new Card("🃏", "🃏"));
 
   return deck;
 }
