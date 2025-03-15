@@ -14,6 +14,7 @@ app.set('view engine', 'hbs');
 // Set the location of the views directory
 app.set('views', __dirname + '/views');
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
 var Deck = require('./helpers/deck');
 const { Socket } = require("socket.io");
 const { TIMEOUT } = require("dns");
@@ -21,8 +22,10 @@ var router = express.Router();
 const CardDeck = new Deck.Deck();
 const { v4: uuidv4 } = require('uuid');
 const { profile } = require("console"); 
+const {getAllCountries}=require("./helpers/countries");
+const { isAuth } = require("./middleware/auth");
 app.use(session({ //session middleware required for OAuth
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET, 
   resave: false,
   saveUninitialized: true
 }))
@@ -37,19 +40,21 @@ passport.use(new GoogleStrategy({
     return done(null, profile);
   }
 ));
-console.log("before serializing");
 passport.serializeUser((user, done)=>{
   done(null, user);
 });
-console.log("before deserializing");
 passport.deserializeUser((user, done)=>{
   done(null, user);
 });
 app.get('/auth/google', passport.authenticate('google', {scope: ["profile", "email"]}));
-console.log("after passport authenticate");
 app.get('/auth/google/callback', 
   passport.authenticate("google", {failureRedirect: "/login"}), 
   (req, res)=>{
+    req.session.user={
+      email: req.user.emails[0].value,
+      picture: req.user.photos[0].value,
+      lastLogin: new Date().toLocaleString()  
+    };
     res.redirect("/profile"); //redirect to profile setup if first login
   }
 );
@@ -59,14 +64,6 @@ app.get("/logout", (req, res)=>{
     res.redirect("/login");
   });
 });
-
-const isAuth=(req, res, next)=>{
-  if (req.isAuthenticated()){
-    next();
-    return;
-  }
-  res.redirect("/login");
-}
 
 app.use((req, res, next)=>{
   if (!req.session){
@@ -79,8 +76,9 @@ app.use((req, res, next)=>{
   next();
 })
 
-app.get('/profile', isAuth, (req, res)=>{
-  res.render('profile');
+app.get('/profile', isAuth, async (req, res)=>{
+  const countries= await getAllCountries(); //getting all nations
+  res.render('profile', {countries});
 });
 app.get('/login', (req, res)=>{
   if (req.isAuthenticated()){
@@ -91,6 +89,23 @@ app.get('/login', (req, res)=>{
   }
   res.render('login');
 });
+
+app.get('/account', isAuth, (req, res)=>{
+  console.log(req.session.user);
+  res.render('account', {user: req.session.user})
+})
+app.post('/profile-setup', isAuth, (req, res)=>{
+  req.session.user={
+    picture: req.user.photos[0].value,
+    name: req.body.name || req.user.displayName,
+    email: req.user.emails[0].value,
+    nationality: req.body.nationality,
+    gender: req.body.gender,
+    lastLogin: req.session.user.lastLogin
+  }
+  res.redirect('/');
+})
+
 app.get('/', isAuth, (req, res) => {
   res.render('game');
 });
