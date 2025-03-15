@@ -91,7 +91,6 @@ app.get('/login', (req, res)=>{
 });
 
 app.get('/account', isAuth, (req, res)=>{
-  console.log(req.session.user);
   res.render('account', {user: req.session.user})
 })
 app.post('/profile-setup', isAuth, (req, res)=>{
@@ -104,6 +103,10 @@ app.post('/profile-setup', isAuth, (req, res)=>{
     lastLogin: req.session.user.lastLogin
   }
   res.redirect('/');
+})
+
+app.get('/guide', isAuth, (req, res)=>{
+  res.render('guide');
 })
 
 app.get('/', isAuth, (req, res) => {
