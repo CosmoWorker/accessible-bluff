@@ -91,6 +91,7 @@ app.get('/login', (req, res)=>{
 });
 
 app.get('/account', isAuth, (req, res)=>{
+  console.log(req.session.user);
   res.render('account', {user: req.session.user})
 })
 app.post('/profile-setup', isAuth, (req, res)=>{
@@ -105,11 +106,19 @@ app.post('/profile-setup', isAuth, (req, res)=>{
   res.redirect('/');
 })
 
+app.get('/', isAuth, (req, res)=>{
+  res.render('home')
+})
+
+app.get('/about', isAuth, (req, res)=>{
+  res.render('about');
+})
+
 app.get('/guide', isAuth, (req, res)=>{
   res.render('guide');
 })
 
-app.get('/', isAuth, (req, res) => {
+app.get('/game', isAuth, (req, res) => {
   res.render('game');
 });
 
